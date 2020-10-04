@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v5.js"></script>
+        <script src="https://d3js.org/d3-queue.v3.min.js"></script>
+        <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+        <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+        <script src="drawmap.js"></script>
+
+        <script>
+            
+
+            async function paintBBCData() {   
+
+                var data = await d3.json("bbc_data.json");
+                
+                //When testing is done do a For each record, compute the total
+                //And keep track of highest and lowest value for county color
+                max = 0;
+                min = 0;
+                var fieldList = ["Barber","Cosmetology","Electrology","Establishment","Esthetician","Manicure","Mobile Unt "];
+                
+                var compareField = d3.select("licenseType").text;
+
+                for(var i=0;i<data.length;i++){
+                    for(var j=0; j<fieldList.length; j++)
+                    {
+                        //Initialize the total field
+                        data[i]["Total"]=0;
+                        //Convert the loaded value to a number
+                        data[i][fieldList[j]] = Number(data[i][fieldList[j]]);
+                        //Add value to total for row
+                        data[i]["Total"] += data[i][fieldList[j]];
+                        //Update min if appropriate
+                        if(data[i][compareField]<min||min==0)
+                            min =data[i][compareField];
+                        //Update max if appropriate
+                        if(data[i][compareField]>max)
+                            max= data[i][compareField]; 
+                    }
+                }
+
+            }
+
+            async function drawCountyLines(projection){
+                var data = await d3.json("California_Counties.geojson");
+
+                d3.select("#bbc_ca").append("g")
+                            .selectAll("path")
+                            .data(data.features)
+                            .enter()
+                            .append("path")
+                                .attr("d", d3.geoPath()
+                                //Uncaught (in promise) ReferenceError: projection is not defined
+                                    .projection(projection))
+                                .attr("countyID", data.features.id)
+                bbcData = paintBBCData();
+                //var cs = colorScale(min, max, )
+                return true;
+                }
+
+            function colorScale (min, max, colorScheme)
+                { var domain = [];
+                var step = (max - min) /10;
+                for(i=0; i<= 9; i++){
+                    domain[i] = min + step*i;
+                }
+
+                    return d3.scaleThreshold()
+                        .domain(domain)
+                        .range(d3.schemeBlues[value]);
+                }
+            function drawMap(){
+                //Assign variable to svg object
+                var svg = d3.select("svg"),
+                        width = +svg.attr("width"),
+                        height = +svg.attr("height");
+
+                //Set the projection so the globe is displayed as a plane
+                var projection = d3.geoMercator()
+                    .center([-119.5, 37.5])
+                    .scale(4000)
+                    .translate([width / 2, height / 2]);
+
+                var path = d3.geoPath().projection(projection);
+
+                var bbcData, topo;
+                var max, min;
+
+                topo = drawCountyLines(projection);
+            }
+        </script>
+
+    </head>
+    
+    <body onload="drawMap()">
+        <form>
+            Which license would you like to view:
+            <select id="licenseType" onchange="drawMap()">
+                <option selected>All</option>
+                <option>Barber</option>
+                <option>Cosmetology</option>
+                <option>Electrology</option>
+                <option>Esthetician</option>
+                <option>Manicure</option>
+                <option>Establishment</option>
+                <option>Mobile Unt </option>
+            </select>
+        </form>
+        <svg id="bbc_ca" width="900" height="900"></svg>
+        
+    </body>
+</html>
